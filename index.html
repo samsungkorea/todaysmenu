@@ -43,6 +43,10 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 *{-webkit-tap-highlight-color:transparent}
+.theming *,.theming *::before,.theming *::after,.theming body{transition:none!important}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(root){z-index:1}
+::view-transition-new(root){z-index:2}
 button{transition:opacity .15s ease}
 button:active{opacity:.6}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -198,12 +202,40 @@ const store = {
 const root = document.documentElement;
 const savedTheme = store.get("theme");
 if (savedTheme) root.dataset.theme = savedTheme;
-document.getElementById("theme").addEventListener("click", () => {
+let themeBusy = false;
+function applyTheme(next){
+  root.dataset.theme = next; store.set("theme", next);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = next === "dark" ? "#0a1022" : "#e9eef8");
+}
+document.getElementById("theme").addEventListener("click", async e => {
+  if (themeBusy) return;
   const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
   const cur = root.dataset.theme || (sysDark ? "dark" : "light");
   const next = cur === "dark" ? "light" : "dark";
-  root.dataset.theme = next; store.set("theme", next);
-  document.querySelector('meta[name="theme-color"]').content = next === "dark" ? "#0a1022" : "#e9eef8";
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // 색이 따로따로 바뀌며 끊기는 걸 막기 위해, 전환 중엔 개별 transition을 끄고 한 번에 교체
+  root.classList.add("theming");
+  if (!document.startViewTransition || still) {
+    applyTheme(next);
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theming")));
+    return;
+  }
+  themeBusy = true;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  const t = document.startViewTransition(() => applyTheme(next));
+  try {
+    await t.ready;
+    root.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 650, easing: "cubic-bezier(.65,0,.25,1)", pseudoElement: "::view-transition-new(root)" }
+    );
+    await t.finished;
+  } catch {}
+  root.classList.remove("theming");
+  themeBusy = false;
 });
 
 /* 크롬 계열에서만 굴절 필터 */
