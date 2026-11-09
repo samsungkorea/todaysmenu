@@ -52,14 +52,20 @@ body{
   font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
 }
-/* 배경: 블러 필터·애니메이션 없이 그라데이션 한 장 (뒤의 유리 블러를 매 프레임 다시 계산하지 않게) */
-.sky{position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-    radial-gradient(60vmax 60vmax at 8% 4%,var(--blob1),transparent 70%),
-    radial-gradient(55vmax 55vmax at 100% 45%,var(--blob2),transparent 70%),
-    radial-gradient(55vmax 55vmax at 15% 105%,var(--blob3),transparent 70%),
-    var(--bg);
-  transform:translateZ(0)}
+/* 배경: 흐르는 그라데이션 덩어리
+   - 블러 필터 대신 원래 부드러운 radial-gradient 사용
+   - 이동은 GPU transform + steps()로 초당 10번만 갱신 → 움직임은 그대로, 유리 블러 재계산은 1/6 */
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--bg)}
+.sky span{position:absolute;border-radius:50%;opacity:.9;will-change:transform}
+.sky .b1{width:90vmax;height:90vmax;left:-35vmax;top:-30vmax;
+  background:radial-gradient(closest-side,var(--blob1),transparent);animation:drift1 26s steps(260) infinite alternate}
+.sky .b2{width:80vmax;height:80vmax;right:-35vmax;top:10vh;
+  background:radial-gradient(closest-side,var(--blob2),transparent);animation:drift2 32s steps(320) infinite alternate}
+.sky .b3{width:80vmax;height:80vmax;left:-20vmax;bottom:-40vmax;
+  background:radial-gradient(closest-side,var(--blob3),transparent);animation:drift3 29s steps(290) infinite alternate}
+@keyframes drift1{to{transform:translate(12vmax,8vmax) scale(1.1)}}
+@keyframes drift2{to{transform:translate(-10vmax,-6vmax) scale(.92)}}
+@keyframes drift3{to{transform:translate(8vmax,-10vmax) scale(1.08)}}
 
 .app{position:relative;z-index:1;max-width:480px;height:100%;margin:0 auto;padding:18px 20px 16px;display:flex;flex-direction:column}
 
@@ -87,15 +93,16 @@ header{flex:none;display:flex;align-items:flex-end;justify-content:space-between
 .glass{
   position:relative;isolation:isolate;
   background:linear-gradient(160deg,var(--glass-top),var(--glass-bot));
-  -webkit-backdrop-filter:blur(14px) saturate(170%);
-  backdrop-filter:blur(14px) saturate(170%);
+  -webkit-backdrop-filter:blur(22px) saturate(185%);
+  backdrop-filter:blur(22px) saturate(185%);
   border:1px solid var(--rim);
   box-shadow:
     inset 0 1.5px 0 var(--rim),
     inset 0 -1px 0 var(--rim-low),
-    0 8px 24px -10px var(--shadow);
+    inset 0 0 18px var(--rim-low),
+    0 10px 36px -8px var(--shadow);
 }
-.refract .glass{backdrop-filter:url(#lens) blur(14px) saturate(170%)}
+.refract .glass{backdrop-filter:url(#lens) blur(22px) saturate(185%)}
 .glass::before{
   content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(240px circle at var(--mx,30%) var(--my,0%),var(--spec),transparent 65%);
@@ -121,7 +128,7 @@ header{flex:none;display:flex;align-items:flex-end;justify-content:space-between
 .meal[role="button"]:active{transform:scale(.985)}
 .meal.mini{flex:0 0 62px}
 .meal.tilting{transition:flex .55s cubic-bezier(.32,.72,0,1),opacity .4s ease;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
-.meal.now{box-shadow:inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),0 14px 32px -12px var(--shadow)}
+.meal.now{box-shadow:inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),inset 0 0 22px var(--rim-low),0 18px 48px -10px var(--shadow)}
 .meal:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .meal-head{flex:none;display:flex;align-items:center;gap:10px;height:22px;margin-bottom:12px}
@@ -153,6 +160,7 @@ header{flex:none;display:flex;align-items:flex-end;justify-content:space-between
 
 
 @media (prefers-reduced-motion:reduce){
+  .sky span{animation:none}
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
 }
 </style>
@@ -166,7 +174,7 @@ header{flex:none;display:flex;align-items:flex-end;justify-content:space-between
   </filter>
 </svg>
 
-<div class="sky" aria-hidden="true"></div>
+<div class="sky" aria-hidden="true"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
 
 <div class="app">
   <header>
