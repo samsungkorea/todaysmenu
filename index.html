@@ -51,17 +51,15 @@ body{
   margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
   font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
-  transition:background-color .6s ease,color .6s ease;
 }
-/* 배경 그라데이션 덩어리 */
-.sky{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.sky span{position:absolute;border-radius:50%;filter:blur(60px);opacity:.85;transition:background .8s ease}
-.sky .b1{width:70vmax;height:70vmax;left:-25vmax;top:-20vmax;background:var(--blob1);animation:drift1 26s ease-in-out infinite alternate}
-.sky .b2{width:60vmax;height:60vmax;right:-25vmax;top:20vh;background:var(--blob2);animation:drift2 32s ease-in-out infinite alternate}
-.sky .b3{width:55vmax;height:55vmax;left:-10vmax;bottom:-30vmax;background:var(--blob3);animation:drift3 29s ease-in-out infinite alternate}
-@keyframes drift1{to{transform:translate(12vmax,8vmax) scale(1.1)}}
-@keyframes drift2{to{transform:translate(-10vmax,-6vmax) scale(.92)}}
-@keyframes drift3{to{transform:translate(8vmax,-10vmax) scale(1.08)}}
+/* 배경: 블러 필터·애니메이션 없이 그라데이션 한 장 (뒤의 유리 블러를 매 프레임 다시 계산하지 않게) */
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(60vmax 60vmax at 8% 4%,var(--blob1),transparent 70%),
+    radial-gradient(55vmax 55vmax at 100% 45%,var(--blob2),transparent 70%),
+    radial-gradient(55vmax 55vmax at 15% 105%,var(--blob3),transparent 70%),
+    var(--bg);
+  transform:translateZ(0)}
 
 .app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:28px 18px 40px}
 
@@ -89,17 +87,15 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .glass{
   position:relative;isolation:isolate;
   background:linear-gradient(160deg,var(--glass-top),var(--glass-bot));
-  -webkit-backdrop-filter:blur(22px) saturate(185%);
-  backdrop-filter:blur(22px) saturate(185%);
+  -webkit-backdrop-filter:blur(14px) saturate(170%);
+  backdrop-filter:blur(14px) saturate(170%);
   border:1px solid var(--rim);
   box-shadow:
     inset 0 1.5px 0 var(--rim),
     inset 0 -1px 0 var(--rim-low),
-    inset 0 0 18px var(--rim-low),
-    0 10px 36px -8px var(--shadow);
-  transition:background .6s ease,border-color .6s ease,box-shadow .6s ease;
+    0 8px 24px -10px var(--shadow);
 }
-.refract .glass{backdrop-filter:url(#lens) blur(22px) saturate(185%)}
+.refract .glass{backdrop-filter:url(#lens) blur(14px) saturate(170%)}
 .glass::before{
   content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(240px circle at var(--mx,30%) var(--my,0%),var(--spec),transparent 65%);
@@ -114,15 +110,17 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
   mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
   opacity:var(--glow,0);
 }
+.glass:not(.lit)::after{display:none}
 
-#stack{display:flex;flex-direction:column;gap:14px;touch-action:pan-y;will-change:transform,opacity}
+#stack{display:flex;flex-direction:column;gap:14px;touch-action:pan-y}
+#stack.dragging{will-change:transform}
 .meal{--s:1;border-radius:30px;padding:20px 22px 22px;
-  transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--s));
+  transform:scale(var(--s));contain:layout paint;
   transition:transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s ease}
-.meal.tilting{transition:opacity .4s ease}
+.meal.tilting{transition:opacity .4s ease;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--s))}
 .meal.now{--s:1.025;box-shadow:
-    inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),inset 0 0 22px var(--rim-low),
-    0 18px 48px -10px var(--shadow)}
+    inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),
+    0 14px 32px -12px var(--shadow)}
 .meal:not(.now).dim{opacity:.72}
 .meal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .meal h2{margin:0;font-size:15px;font-weight:650;color:var(--ink-soft);letter-spacing:-.01em}
@@ -156,7 +154,7 @@ footer{margin:26px 4px 0;font-size:12.5px;color:var(--ink-faint);text-align:cent
   </filter>
 </svg>
 
-<div class="sky" aria-hidden="true"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+<div class="sky" aria-hidden="true"></div>
 
 <div class="app">
   <header>
@@ -184,7 +182,7 @@ const CFG = {
   OFFICE: "I10",                 // 세종특별자치시교육청
   SCHOOL_NAME: "세종과학예술영재학교",
   SCHOOL_CODE: "",               // 알고 있으면 넣기. 비워두면 학교명으로 자동 조회
-  REFRACTION: true               // 크롬 계열 브라우저에서 유리 굴절 효과 사용
+  REFRACTION: false              // 크롬 계열 브라우저에서 유리 굴절 효과 사용
 };
 const MEALS = ["조식", "중식", "석식"];
 const API = "https://open.neis.go.kr/hub/";
@@ -410,54 +408,60 @@ addEventListener("keydown", e => {
   if (e.key === "ArrowRight") go(1);
 });
 
-/* 스와이프 */
-let sx = 0, sy = 0, dx = 0, tracking = false, horiz = null;
+/* 스와이프 (transform만, 프레임당 1회) */
+let sx = 0, sy = 0, dx = 0, tracking = false, horiz = null, dragRaf = null;
 $stack.addEventListener("pointerdown", e => {
   if (busy || e.pointerType === "mouse" && e.button !== 0) return;
   tracking = true; horiz = null; sx = e.clientX; sy = e.clientY; dx = 0;
-});
+}, { passive: true });
 addEventListener("pointermove", e => {
   if (!tracking) return;
   const mx = e.clientX - sx, my = e.clientY - sy;
-  if (horiz === null && Math.hypot(mx, my) > 8) horiz = Math.abs(mx) > Math.abs(my);
+  if (horiz === null && Math.hypot(mx, my) > 8) {
+    horiz = Math.abs(mx) > Math.abs(my);
+    if (horiz) { $stack.classList.add("dragging"); $stack.style.transition = "none"; }
+  }
   if (!horiz) return;
   dx = mx;
-  const damped = dx * 0.55;
-  $stack.style.transition = "none";
-  $stack.style.transform = `translateX(${damped}px) rotate(${damped * 0.01}deg)`;
-  $stack.style.opacity = String(1 - Math.min(Math.abs(dx) / 600, .4));
-});
+  if (!dragRaf) dragRaf = requestAnimationFrame(() => {
+    dragRaf = null;
+    $stack.style.transform = `translate3d(${dx * 0.55}px,0,0)`;
+  });
+}, { passive: true });
 function endSwipe(){
   if (!tracking) return; tracking = false;
+  if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = null; }
+  $stack.classList.remove("dragging");
   if (horiz && Math.abs(dx) > 70) { go(dx < 0 ? 1 : -1); }
-  else { $stack.style.transition = SPRING; $stack.style.transform = ""; $stack.style.opacity = ""; }
+  else if (horiz) { $stack.style.transition = SPRING; $stack.style.transform = ""; }
 }
-addEventListener("pointerup", endSwipe);
-addEventListener("pointercancel", endSwipe);
+addEventListener("pointerup", endSwipe, { passive: true });
+addEventListener("pointercancel", endSwipe, { passive: true });
 
-/* ===== 애플펜슬 호버 / 마우스: 빛이 액체처럼 따라옴 ===== */
+/* ===== 애플펜슬 호버 / 마우스: 빛이 액체처럼 따라옴 =====
+   손가락 터치에서는 아예 동작하지 않음 (폰에서는 비용 0) */
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const hover = { x: 0, y: 0, on: false };
 const glassState = new WeakMap();
-let hoverRaf = null, hoverIdle = null;
+let hoverRaf = null, hoverIdle = null, glassCache = null;
 
+function invalidateGlass(){ glassCache = null; }
+addEventListener("resize", invalidateGlass, { passive: true });
+addEventListener("scroll", invalidateGlass, { passive: true });
+new MutationObserver(invalidateGlass).observe($stack, { childList: true });
+function glassList(){
+  if (!glassCache) glassCache = [...document.querySelectorAll(".glass")].map(el => ({ el, r: el.getBoundingClientRect() }));
+  return glassCache;
+}
 function startHover(){ if (!hoverRaf) hoverRaf = requestAnimationFrame(hoverTick); }
 
 addEventListener("pointermove", e => {
-  // 펜슬 호버(pen)와 마우스만. 손가락 터치는 스와이프 중 하이라이트만 이동
-  if (e.pointerType === "touch") {
-    const el = e.target.closest?.(".glass");
-    if (el) { const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-      el.style.setProperty("--my", `${e.clientY - r.top}px`); }
-    return;
-  }
+  if (e.pointerType === "touch" || tracking) return;
   hover.x = e.clientX; hover.y = e.clientY; hover.on = true;
   clearTimeout(hoverIdle);
   hoverIdle = setTimeout(() => { hover.on = false; startHover(); }, 1200);
   startHover();
 }, { passive: true });
-
 document.addEventListener("pointerout", e => {
   if (!e.relatedTarget && e.pointerType !== "touch") { hover.on = false; startHover(); }
 });
@@ -466,33 +470,38 @@ function hoverTick(){
   hoverRaf = null;
   let moving = false;
   const k = 0.16; // 낮을수록 더 끈적하게 따라옴
-  document.querySelectorAll(".glass").forEach(el => {
-    const r = el.getBoundingClientRect();
+  for (const { el, r } of glassList()) {
     let s = glassState.get(el);
     if (!s) { s = { mx: r.width * .3, my: 0, glow: 0, rx: 0, ry: 0 }; glassState.set(el, s); }
 
     const px = hover.x - r.left, py = hover.y - r.top;
-    const dx = Math.max(-px, 0, px - r.width), dy = Math.max(-py, 0, py - r.height);
-    const dist = Math.hypot(dx, dy);
-    const inside = dist === 0;
+    const ox = Math.max(-px, 0, px - r.width), oy = Math.max(-py, 0, py - r.height);
+    const dist = Math.hypot(ox, oy);
     const tGlow = hover.on ? Math.max(0, 1 - dist / 110) : 0;
-    const tilt = hover.on && inside && !reduceMotion && el.classList.contains("meal");
+    // 멀리 있고 이미 꺼진 카드는 건드리지 않음
+    if (tGlow === 0 && s.glow < 0.002 && Math.abs(s.rx) + Math.abs(s.ry) < 0.02) {
+      if (s.glow !== 0) { s.glow = 0; el.classList.remove("lit"); el.style.setProperty("--glow", "0"); }
+      continue;
+    }
+    const tilt = hover.on && dist === 0 && !reduceMotion && el.classList.contains("meal");
     const tRy = tilt ? (px / r.width - .5) * 7 : 0;
     const tRx = tilt ? -(py / r.height - .5) * 7 : 0;
 
-    const before = s.mx + s.my + s.glow + s.rx + s.ry;
     if (hover.on) { s.mx += (px - s.mx) * k; s.my += (py - s.my) * k; }
     s.glow += (tGlow - s.glow) * k;
     s.rx += (tRx - s.rx) * k; s.ry += (tRy - s.ry) * k;
-    if (Math.abs(before - (s.mx + s.my + s.glow + s.rx + s.ry)) > 0.01) moving = true;
+    moving = true;
 
     el.style.setProperty("--mx", `${s.mx.toFixed(1)}px`);
     el.style.setProperty("--my", `${s.my.toFixed(1)}px`);
     el.style.setProperty("--glow", s.glow.toFixed(3));
-    el.style.setProperty("--rx", `${s.rx.toFixed(2)}deg`);
-    el.style.setProperty("--ry", `${s.ry.toFixed(2)}deg`);
-    el.classList.toggle("tilting", Math.abs(s.rx) + Math.abs(s.ry) > 0.05);
-  });
+    el.classList.toggle("lit", s.glow > 0.01);
+    if (el.classList.contains("meal")) {
+      el.style.setProperty("--rx", `${s.rx.toFixed(2)}deg`);
+      el.style.setProperty("--ry", `${s.ry.toFixed(2)}deg`);
+      el.classList.toggle("tilting", Math.abs(s.rx) + Math.abs(s.ry) > 0.05);
+    }
+  }
   if (moving) startHover();
 }
 
