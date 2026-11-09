@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#e9eef8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0a1022" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e9eef8">
 <title>세종영재 급식</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍱</text></svg>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -44,9 +43,7 @@
 *,*::before,*::after{box-sizing:border-box}
 *{-webkit-tap-highlight-color:transparent}
 .theming *,.theming *::before,.theming *::after,.theming body{transition:none!important}
-::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
-::view-transition-old(root){z-index:1}
-::view-transition-new(root){z-index:2}
+#veil{position:fixed;inset:0;z-index:999;pointer-events:none;opacity:0}
 button{transition:opacity .15s ease}
 button:active{opacity:.6}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -203,38 +200,39 @@ const root = document.documentElement;
 const savedTheme = store.get("theme");
 if (savedTheme) root.dataset.theme = savedTheme;
 let themeBusy = false;
-function applyTheme(next){
-  root.dataset.theme = next; store.set("theme", next);
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = next === "dark" ? "#0a1022" : "#e9eef8");
-}
-document.getElementById("theme").addEventListener("click", async e => {
+const isDark = () => (root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+function syncThemeColor(){ document.querySelector('meta[name="theme-color"]').content = isDark() ? "#0a1022" : "#e9eef8"; }
+syncThemeColor();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncThemeColor);
+
+const veil = document.createElement("div");
+veil.id = "veil"; document.body.appendChild(veil);
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+document.getElementById("theme").addEventListener("click", async () => {
   if (themeBusy) return;
-  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
-  const cur = root.dataset.theme || (sysDark ? "dark" : "light");
-  const next = cur === "dark" ? "light" : "dark";
+  themeBusy = true;
+  const next = isDark() ? "light" : "dark";
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // 색이 따로따로 바뀌며 끊기는 걸 막기 위해, 전환 중엔 개별 transition을 끄고 한 번에 교체
+  // 1) 지금 배경색의 막을 서서히 덮고
+  veil.style.background = getComputedStyle(root).getPropertyValue("--bg");
+  if (!still) await veil.animate({ opacity: [0, 1] }, { duration: 220, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" }).finished;
+  else veil.style.opacity = "1";
+
+  // 2) 막 뒤에서 한 번에 교체 (개별 transition 끄기)
   root.classList.add("theming");
-  if (!document.startViewTransition || still) {
-    applyTheme(next);
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theming")));
-    return;
-  }
-  themeBusy = true;
-  const r = e.currentTarget.getBoundingClientRect();
-  const x = r.left + r.width / 2, y = r.top + r.height / 2;
-  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-  const t = document.startViewTransition(() => applyTheme(next));
-  try {
-    await t.ready;
-    root.animate(
-      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-      { duration: 650, easing: "cubic-bezier(.65,0,.25,1)", pseudoElement: "::view-transition-new(root)" }
-    );
-    await t.finished;
-  } catch {}
+  root.dataset.theme = next; store.set("theme", next);
+  syncThemeColor();
+  await nextFrame();
   root.classList.remove("theming");
+  await nextFrame();
+
+  // 3) 막을 서서히 걷기
+  veil.getAnimations().forEach(a => a.cancel());
+  if (!still) await veil.animate({ opacity: [1, 0] }, { duration: 420, easing: "cubic-bezier(0,0,.2,1)", fill: "forwards" }).finished;
+  veil.getAnimations().forEach(a => a.cancel());
+  veil.style.opacity = "";
   themeBusy = false;
 });
 
