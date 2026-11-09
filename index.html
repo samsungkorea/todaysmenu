@@ -42,6 +42,9 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
+*{-webkit-tap-highlight-color:transparent}
+button{transition:opacity .15s ease}
+button:active{opacity:.6}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{
   margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
@@ -73,7 +76,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
   appearance:none;border:0;background:transparent;color:var(--ink);
   height:36px;min-width:36px;padding:0 10px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;
   display:grid;place-items:center;cursor:pointer;
-  transition:background .25s ease,transform .35s cubic-bezier(.34,1.56,.64,1);
+  transition:background .25s ease,opacity .15s ease,transform .35s cubic-bezier(.34,1.56,.64,1);
 }
 .controls button:hover{background:var(--rim-low)}
 .controls button:active{transform:scale(.88)}
@@ -99,13 +102,24 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .glass::before{
   content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(240px circle at var(--mx,30%) var(--my,0%),var(--spec),transparent 65%);
-  opacity:.9;transition:opacity .4s ease;
+  opacity:calc(.55 + var(--glow,0) * .45);
+}
+/* 펜슬/커서를 따라 테두리에 맺히는 빛 */
+.glass::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;
+  background:radial-gradient(150px circle at var(--mx,50%) var(--my,0%),rgba(255,255,255,.95),rgba(255,255,255,0) 70%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  opacity:var(--glow,0);
 }
 
 #stack{display:flex;flex-direction:column;gap:14px;touch-action:pan-y;will-change:transform,opacity}
-.meal{border-radius:30px;padding:20px 22px 22px;
+.meal{--s:1;border-radius:30px;padding:20px 22px 22px;
+  transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(var(--s));
   transition:transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s ease}
-.meal.now{transform:scale(1.025);box-shadow:
+.meal.tilting{transition:opacity .4s ease}
+.meal.now{--s:1.025;box-shadow:
     inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),inset 0 0 22px var(--rim-low),
     0 18px 48px -10px var(--shadow)}
 .meal:not(.now).dim{opacity:.72}
@@ -391,14 +405,66 @@ function endSwipe(){
 addEventListener("pointerup", endSwipe);
 addEventListener("pointercancel", endSwipe);
 
-/* 유리 하이라이트가 손가락/커서를 따라감 */
+/* ===== 애플펜슬 호버 / 마우스: 빛이 액체처럼 따라옴 ===== */
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const hover = { x: 0, y: 0, on: false };
+const glassState = new WeakMap();
+let hoverRaf = null, hoverIdle = null;
+
+function startHover(){ if (!hoverRaf) hoverRaf = requestAnimationFrame(hoverTick); }
+
 addEventListener("pointermove", e => {
-  const el = e.target.closest?.(".glass");
-  if (!el) return;
-  const r = el.getBoundingClientRect();
-  el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-  el.style.setProperty("--my", `${e.clientY - r.top}px`);
+  // 펜슬 호버(pen)와 마우스만. 손가락 터치는 스와이프 중 하이라이트만 이동
+  if (e.pointerType === "touch") {
+    const el = e.target.closest?.(".glass");
+    if (el) { const r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      el.style.setProperty("--my", `${e.clientY - r.top}px`); }
+    return;
+  }
+  hover.x = e.clientX; hover.y = e.clientY; hover.on = true;
+  clearTimeout(hoverIdle);
+  hoverIdle = setTimeout(() => { hover.on = false; startHover(); }, 1200);
+  startHover();
 }, { passive: true });
+
+document.addEventListener("pointerout", e => {
+  if (!e.relatedTarget && e.pointerType !== "touch") { hover.on = false; startHover(); }
+});
+
+function hoverTick(){
+  hoverRaf = null;
+  let moving = false;
+  const k = 0.16; // 낮을수록 더 끈적하게 따라옴
+  document.querySelectorAll(".glass").forEach(el => {
+    const r = el.getBoundingClientRect();
+    let s = glassState.get(el);
+    if (!s) { s = { mx: r.width * .3, my: 0, glow: 0, rx: 0, ry: 0 }; glassState.set(el, s); }
+
+    const px = hover.x - r.left, py = hover.y - r.top;
+    const dx = Math.max(-px, 0, px - r.width), dy = Math.max(-py, 0, py - r.height);
+    const dist = Math.hypot(dx, dy);
+    const inside = dist === 0;
+    const tGlow = hover.on ? Math.max(0, 1 - dist / 110) : 0;
+    const tilt = hover.on && inside && !reduceMotion && el.classList.contains("meal");
+    const tRy = tilt ? (px / r.width - .5) * 7 : 0;
+    const tRx = tilt ? -(py / r.height - .5) * 7 : 0;
+
+    const before = s.mx + s.my + s.glow + s.rx + s.ry;
+    if (hover.on) { s.mx += (px - s.mx) * k; s.my += (py - s.my) * k; }
+    s.glow += (tGlow - s.glow) * k;
+    s.rx += (tRx - s.rx) * k; s.ry += (tRy - s.ry) * k;
+    if (Math.abs(before - (s.mx + s.my + s.glow + s.rx + s.ry)) > 0.01) moving = true;
+
+    el.style.setProperty("--mx", `${s.mx.toFixed(1)}px`);
+    el.style.setProperty("--my", `${s.my.toFixed(1)}px`);
+    el.style.setProperty("--glow", s.glow.toFixed(3));
+    el.style.setProperty("--rx", `${s.rx.toFixed(2)}deg`);
+    el.style.setProperty("--ry", `${s.ry.toFixed(2)}deg`);
+    el.classList.toggle("tilting", Math.abs(s.rx) + Math.abs(s.ry) > 0.05);
+  });
+  if (moving) startHover();
+}
 
 /* 앱으로 돌아왔을 때 날짜/끼니 갱신 */
 let lastDay = ymd(new Date());
