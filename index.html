@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e9eef8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1022" media="(prefers-color-scheme: dark)">
+<title>세종영재 급식</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍱</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --bg:#e9eef8; --ink:#17203a; --ink-soft:#5a6582; --ink-faint:#8c95ad;
+  --blob1:#a9c6ff; --blob2:#d3bfff; --blob3:#a6e6db;
+  --glass-top:rgba(255,255,255,.62); --glass-bot:rgba(255,255,255,.28);
+  --rim:rgba(255,255,255,.75); --rim-low:rgba(255,255,255,.25);
+  --shadow:rgba(38,56,110,.14); --spec:rgba(255,255,255,.7);
+  --accent:#3b5bdb; --chip-bg:rgba(59,91,219,.12);
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a1022; --ink:#e8edf9; --ink-soft:#a3aeca; --ink-faint:#6c7795;
+    --blob1:#2c46a0; --blob2:#4e2f86; --blob3:#11605d;
+    --glass-top:rgba(255,255,255,.13); --glass-bot:rgba(255,255,255,.04);
+    --rim:rgba(255,255,255,.28); --rim-low:rgba(255,255,255,.06);
+    --shadow:rgba(0,0,0,.45); --spec:rgba(255,255,255,.22);
+    --accent:#8fa8ff; --chip-bg:rgba(143,168,255,.16);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a1022; --ink:#e8edf9; --ink-soft:#a3aeca; --ink-faint:#6c7795;
+  --blob1:#2c46a0; --blob2:#4e2f86; --blob3:#11605d;
+  --glass-top:rgba(255,255,255,.13); --glass-bot:rgba(255,255,255,.04);
+  --rim:rgba(255,255,255,.28); --rim-low:rgba(255,255,255,.06);
+  --shadow:rgba(0,0,0,.45); --spec:rgba(255,255,255,.22);
+  --accent:#8fa8ff; --chip-bg:rgba(143,168,255,.16);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+  font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  transition:background-color .6s ease,color .6s ease;
+}
+/* 배경 그라데이션 덩어리 */
+.sky{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.sky span{position:absolute;border-radius:50%;filter:blur(60px);opacity:.85;transition:background .8s ease}
+.sky .b1{width:70vmax;height:70vmax;left:-25vmax;top:-20vmax;background:var(--blob1);animation:drift1 26s ease-in-out infinite alternate}
+.sky .b2{width:60vmax;height:60vmax;right:-25vmax;top:20vh;background:var(--blob2);animation:drift2 32s ease-in-out infinite alternate}
+.sky .b3{width:55vmax;height:55vmax;left:-10vmax;bottom:-30vmax;background:var(--blob3);animation:drift3 29s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(12vmax,8vmax) scale(1.1)}}
+@keyframes drift2{to{transform:translate(-10vmax,-6vmax) scale(.92)}}
+@keyframes drift3{to{transform:translate(8vmax,-10vmax) scale(1.08)}}
+
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:28px 18px 40px}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 4px 22px}
+.date-wrap{min-width:0}
+#date{font-size:clamp(30px,9vw,38px);font-weight:750;letter-spacing:-.035em;line-height:1.05;margin:0;
+  transition:opacity .35s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+#weekday{margin:6px 0 0;font-size:15px;font-weight:500;color:var(--ink-soft);letter-spacing:-.01em}
+#weekday b{font-weight:650;color:var(--accent)}
+
+.controls{display:flex;gap:6px;padding:5px;border-radius:999px;flex-shrink:0}
+.controls button{
+  appearance:none;border:0;background:transparent;color:var(--ink);
+  height:36px;min-width:36px;padding:0 10px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;
+  display:grid;place-items:center;cursor:pointer;
+  transition:background .25s ease,transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.controls button:hover{background:var(--rim-low)}
+.controls button:active{transform:scale(.88)}
+.controls button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.controls svg{width:18px;height:18px}
+#today[hidden]{display:none}
+
+/* 리퀴드 글라스 */
+.glass{
+  position:relative;isolation:isolate;
+  background:linear-gradient(160deg,var(--glass-top),var(--glass-bot));
+  -webkit-backdrop-filter:blur(22px) saturate(185%);
+  backdrop-filter:blur(22px) saturate(185%);
+  border:1px solid var(--rim);
+  box-shadow:
+    inset 0 1.5px 0 var(--rim),
+    inset 0 -1px 0 var(--rim-low),
+    inset 0 0 18px var(--rim-low),
+    0 10px 36px -8px var(--shadow);
+  transition:background .6s ease,border-color .6s ease,box-shadow .6s ease;
+}
+.refract .glass{backdrop-filter:url(#lens) blur(22px) saturate(185%)}
+.glass::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
+  background:radial-gradient(240px circle at var(--mx,30%) var(--my,0%),var(--spec),transparent 65%);
+  opacity:.9;transition:opacity .4s ease;
+}
+
+#stack{display:flex;flex-direction:column;gap:14px;touch-action:pan-y;will-change:transform,opacity}
+.meal{border-radius:30px;padding:20px 22px 22px;
+  transition:transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s ease}
+.meal.now{transform:scale(1.025);box-shadow:
+    inset 0 1.5px 0 var(--rim),inset 0 -1px 0 var(--rim-low),inset 0 0 22px var(--rim-low),
+    0 18px 48px -10px var(--shadow)}
+.meal:not(.now).dim{opacity:.72}
+.meal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.meal h2{margin:0;font-size:15px;font-weight:650;color:var(--ink-soft);letter-spacing:-.01em}
+.chip{font-size:12px;font-weight:650;color:var(--accent);background:var(--chip-bg);padding:5px 10px;border-radius:999px;
+  animation:pop .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.5);opacity:0}}
+.dishes{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.dishes li{font-size:17px;font-weight:520;line-height:1.5;letter-spacing:-.02em}
+.dishes li:first-child{font-weight:650}
+.note{margin:0;font-size:15px;line-height:1.55;color:var(--ink-faint)}
+.note button{margin-top:10px;appearance:none;border:1px solid var(--rim);background:var(--chip-bg);color:var(--accent);
+  font:inherit;font-weight:600;font-size:14px;padding:8px 14px;border-radius:999px;cursor:pointer}
+.skel{height:15px;border-radius:8px;background:var(--rim-low);margin:9px 0;animation:shimmer 1.4s ease-in-out infinite}
+.skel:nth-child(2){width:72%}.skel:nth-child(3){width:58%}.skel:nth-child(4){width:80%}
+@keyframes shimmer{50%{opacity:.45}}
+
+footer{margin:26px 4px 0;font-size:12.5px;color:var(--ink-faint);text-align:center;line-height:1.6}
+
+@media (prefers-reduced-motion:reduce){
+  .sky span{animation:none}
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="lens" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="2" result="nb"/>
+    <feDisplacementMap in="SourceGraphic" in2="nb" scale="38" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="sky" aria-hidden="true"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+
+<div class="app">
+  <header>
+    <div class="date-wrap">
+      <h1 id="date">&nbsp;</h1>
+      <p id="weekday">&nbsp;</p>
+    </div>
+    <nav class="controls glass" aria-label="날짜 이동">
+      <button id="prev" aria-label="전날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button id="today" hidden>오늘</button>
+      <button id="next" aria-label="다음날"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      <button id="theme" aria-label="화면 테마 바꾸기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </header>
+
+  <main id="stack" aria-live="polite"></main>
+
+  <footer>세종과학예술영재학교 · 좌우로 밀어서 날짜 이동<br>정보 출처: NEIS 교육정보 개방 포털</footer>
+</div>
+
+<script>
+/* ===== 설정 ===== */
+const CFG = {
+  KEY: "018f206ca7dd4733a968c746a0674013",                       // NEIS 인증키 (open.neis.go.kr에서 발급). 비워두면 샘플 모드로 요청
+  OFFICE: "I10",                 // 세종특별자치시교육청
+  SCHOOL_NAME: "세종과학예술영재학교",
+  SCHOOL_CODE: "",               // 알고 있으면 넣기. 비워두면 학교명으로 자동 조회
+  REFRACTION: true               // 크롬 계열 브라우저에서 유리 굴절 효과 사용
+};
+const MEALS = ["조식", "중식", "석식"];
+const API = "https://open.neis.go.kr/hub/";
+
+/* ===== 저장소 (실패해도 동작) ===== */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch {} }
+};
+
+/* ===== 테마 ===== */
+const root = document.documentElement;
+const savedTheme = store.get("theme");
+if (savedTheme) root.dataset.theme = savedTheme;
+document.getElementById("theme").addEventListener("click", () => {
+  const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = root.dataset.theme || (sysDark ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  root.dataset.theme = next; store.set("theme", next);
+  document.querySelector('meta[name="theme-color"]').content = next === "dark" ? "#0a1022" : "#e9eef8";
+});
+
+/* 크롬 계열에서만 굴절 필터 */
+if (CFG.REFRACTION && navigator.userAgentData && navigator.userAgentData.brands.some(b => /Chrom/.test(b.brand))) {
+  root.classList.add("refract");
+}
+
+/* ===== 날짜 유틸 ===== */
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const WD = ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"];
+
+/* ===== NEIS ===== */
+async function neis(endpoint, params){
+  const q = { Type: "json", ...params };
+  if (CFG.KEY) Object.assign(q, { KEY: CFG.KEY, pIndex: 1, pSize: 100 });
+  const res = await fetch(API + endpoint + "?" + new URLSearchParams(q));
+  if (!res.ok) throw new Error(`서버 응답 오류 (${res.status})`);
+  const j = await res.json();
+  if (j.RESULT) {
+    if (j.RESULT.CODE === "INFO-200") return [];
+    throw new Error(j.RESULT.MESSAGE || j.RESULT.CODE);
+  }
+  const block = j[endpoint];
+  const r = block?.[0]?.head?.[1]?.RESULT;
+  if (r && r.CODE !== "INFO-000") throw new Error(r.MESSAGE);
+  return block?.[1]?.row || [];
+}
+
+let schoolCodePromise = null;
+function getSchoolCode(){
+  if (CFG.SCHOOL_CODE) return Promise.resolve(CFG.SCHOOL_CODE);
+  const cached = store.get("schoolCode");
+  if (cached) return Promise.resolve(cached);
+  schoolCodePromise ??= neis("schoolInfo", { ATPT_OFCDC_SC_CODE: CFG.OFFICE, SCHUL_NM: CFG.SCHOOL_NAME })
+    .then(rows => {
+      const hit = rows.find(r => r.SCHUL_NM === CFG.SCHOOL_NAME) || rows[0];
+      if (!hit) throw new Error("학교 정보를 찾지 못했어요");
+      store.set("schoolCode", hit.SD_SCHUL_CODE);
+      return hit.SD_SCHUL_CODE;
+    })
+    .catch(e => { schoolCodePromise = null; throw e; });
+  return schoolCodePromise;
+}
+
+function cleanDishes(s){
+  return s.split(/<br\s*\/?>/i)
+    .map(d => d.replace(/\s*\(\s*[\d.\s]+\)\s*$/, "")   // (1.2.5.)
+               .replace(/(\D)[\d.]+\.$/, "$1")           // 우유2.
+               .replace(/[*#]+$/, "")
+               .trim())
+    .filter(Boolean);
+}
+
+const cache = new Map();
+function getMeals(date){
+  const key = ymd(date);
+  if (!cache.has(key)) {
+    const p = getSchoolCode()
+      .then(code => neis("mealServiceDietInfo", { ATPT_OFCDC_SC_CODE: CFG.OFFICE, SD_SCHUL_CODE: code, MLSV_YMD: key }))
+      .then(rows => {
+        const out = {};
+        for (const r of rows) out[r.MMEAL_SC_NM] = cleanDishes(r.DDISH_NM || "");
+        return out;
+      })
+      .catch(e => { cache.delete(key); throw e; });
+    cache.set(key, p);
+  }
+  return cache.get(key);
+}
+
+/* ===== 화면 ===== */
+const $date = document.getElementById("date");
+const $wd = document.getElementById("weekday");
+const $stack = document.getElementById("stack");
+const $today = document.getElementById("today");
+let current = startOfDay(new Date());
+
+function currentMeal(){
+  const n = new Date(), m = n.getHours() * 60 + n.getMinutes();
+  if (m < 9 * 60) return "조식";
+  if (m < 14 * 60) return "중식";
+  return "석식";
+}
+
+function esc(s){ return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+function cardShell(name, isNow, inner){
+  return `<article class="meal glass${isNow ? " now" : ""}" data-meal="${name}">
+    <div class="meal-head"><h2>${name}</h2>${isNow ? '<span class="chip">지금</span>' : ""}</div>${inner}</article>`;
+}
+
+function renderHeader(){
+  const isToday = ymd(current) === ymd(new Date());
+  const diff = Math.round((current - startOfDay(new Date())) / 864e5);
+  const rel = isToday ? "<b>오늘</b> " : diff === 1 ? "<b>내일</b> " : diff === -1 ? "<b>어제</b> " : "";
+  $date.textContent = `${current.getMonth()+1}월 ${current.getDate()}일`;
+  $wd.innerHTML = rel + WD[current.getDay()];
+  $today.hidden = isToday;
+  document.title = `${current.getMonth()+1}/${current.getDate()} 급식`;
+}
+
+async function render(){
+  renderHeader();
+  const isToday = ymd(current) === ymd(new Date());
+  const nowMeal = isToday ? currentMeal() : null;
+  const target = ymd(current);
+
+  $stack.innerHTML = MEALS.map(m => cardShell(m, m === nowMeal,
+    '<div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>')).join("");
+
+  try {
+    const data = await getMeals(current);
+    if (target !== ymd(current)) return;
+    const any = MEALS.some(m => data[m]?.length);
+    if (!any) {
+      $stack.innerHTML = cardShell("급식 없음", false,
+        '<p class="note">이 날은 등록된 급식이 없어요. 주말이나 방학일 수 있어요.</p>');
+    } else {
+      $stack.innerHTML = MEALS.map(m => {
+        const list = data[m];
+        const inner = list?.length
+          ? `<ul class="dishes">${list.map(d => `<li>${esc(d)}</li>`).join("")}</ul>`
+          : '<p class="note">이 끼니는 등록된 메뉴가 없어요.</p>';
+        return cardShell(m, m === nowMeal, inner);
+      }).join("");
+      if (nowMeal) $stack.querySelectorAll(".meal:not(.now)").forEach(c => c.classList.add("dim"));
+    }
+    getMeals(addDays(current, 1)).catch(() => {});
+    getMeals(addDays(current, -1)).catch(() => {});
+  } catch (e) {
+    if (target !== ymd(current)) return;
+    $stack.innerHTML = cardShell("불러오기 실패", false,
+      `<p class="note">급식 정보를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.<br><small>${esc(String(e.message || e))}</small><br><button id="retry">다시 불러오기</button></p>`);
+    document.getElementById("retry").onclick = render;
+  }
+}
+
+/* ===== 날짜 이동 애니메이션 ===== */
+const SPRING = "transform .55s cubic-bezier(.34,1.56,.64,1), opacity .35s ease";
+let busy = false;
+async function go(delta){
+  if (busy) return; busy = true;
+  const out = delta > 0 ? -1 : 1;
+  $stack.style.transition = "transform .22s ease-in, opacity .22s ease-in";
+  $stack.style.transform = `translateX(${out * 36}%)`;
+  $stack.style.opacity = "0";
+  $date.style.opacity = "0"; $date.style.transform = `translateX(${out * 14}px)`;
+  await new Promise(r => setTimeout(r, 200));
+  current = addDays(current, delta);
+  const p = render();
+  $stack.style.transition = "none";
+  $stack.style.transform = `translateX(${-out * 36}%)`;
+  $date.style.transition = "none"; $date.style.transform = `translateX(${-out * 14}px)`;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $stack.style.transition = SPRING; $stack.style.transform = ""; $stack.style.opacity = "";
+    $date.style.transition = ""; $date.style.transform = ""; $date.style.opacity = "";
+  }));
+  await p; busy = false;
+}
+function goToday(){
+  const diff = Math.round((startOfDay(new Date()) - current) / 864e5);
+  if (diff) go(diff);
+}
+
+document.getElementById("prev").onclick = () => go(-1);
+document.getElementById("next").onclick = () => go(1);
+$today.onclick = goToday;
+$date.onclick = goToday;
+addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") go(-1);
+  if (e.key === "ArrowRight") go(1);
+});
+
+/* 스와이프 */
+let sx = 0, sy = 0, dx = 0, tracking = false, horiz = null;
+$stack.addEventListener("pointerdown", e => {
+  if (busy || e.pointerType === "mouse" && e.button !== 0) return;
+  tracking = true; horiz = null; sx = e.clientX; sy = e.clientY; dx = 0;
+});
+addEventListener("pointermove", e => {
+  if (!tracking) return;
+  const mx = e.clientX - sx, my = e.clientY - sy;
+  if (horiz === null && Math.hypot(mx, my) > 8) horiz = Math.abs(mx) > Math.abs(my);
+  if (!horiz) return;
+  dx = mx;
+  const damped = dx * 0.55;
+  $stack.style.transition = "none";
+  $stack.style.transform = `translateX(${damped}px) rotate(${damped * 0.01}deg)`;
+  $stack.style.opacity = String(1 - Math.min(Math.abs(dx) / 600, .4));
+});
+function endSwipe(){
+  if (!tracking) return; tracking = false;
+  if (horiz && Math.abs(dx) > 70) { go(dx < 0 ? 1 : -1); }
+  else { $stack.style.transition = SPRING; $stack.style.transform = ""; $stack.style.opacity = ""; }
+}
+addEventListener("pointerup", endSwipe);
+addEventListener("pointercancel", endSwipe);
+
+/* 유리 하이라이트가 손가락/커서를 따라감 */
+addEventListener("pointermove", e => {
+  const el = e.target.closest?.(".glass");
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  el.style.setProperty("--my", `${e.clientY - r.top}px`);
+}, { passive: true });
+
+/* 앱으로 돌아왔을 때 날짜/끼니 갱신 */
+let lastDay = ymd(new Date());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  const d = ymd(new Date());
+  if (d !== lastDay && ymd(current) === lastDay) { current = startOfDay(new Date()); }
+  lastDay = d; render();
+});
+
+render();
+</script>
+</body>
+</html>
